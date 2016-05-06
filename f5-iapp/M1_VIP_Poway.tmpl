@@ -57,25 +57,17 @@ if { [tmsh::get_field_value $portitem port] == "21" } {set profiles "profiles re
 
 
 	 if { $configuration__stagedeployment == "No" } {
-	     if { $configuration__vipaddress_qwest != "" } {tmsh_create "/ ltm virtual" "$tmsh::app_name-qwest-[tmsh::get_field_value $portitem port] \{destination $configuration__vipaddress_qwest:[tmsh::get_field_value $portitem port] ip-protocol tcp  $profiles   mask 255.255.255.255  $snat  pool $tmsh::app_name-[tmsh::get_field_value $portitem port]  translate-address enabled    translate-port enabled vlans-disabled $ruleset     security-log-profiles replace-all-with \{ LoggingProfile-NetworkFirewall-Allow&Drop&Reject \}\}"}
 	     if { $configuration__vipaddress_cox != "" } {tmsh_create "/ ltm virtual" "$tmsh::app_name-cox-[tmsh::get_field_value $portitem port] \{destination $configuration__vipaddress_cox:[tmsh::get_field_value $portitem port] ip-protocol tcp  $profiles   mask 255.255.255.255  $snat  pool $tmsh::app_name-[tmsh::get_field_value $portitem port]  translate-address enabled    translate-port enabled vlans-disabled $ruleset    security-log-profiles replace-all-with \{ LoggingProfile-NetworkFirewall-Allow&Drop&Reject \}\}"}
-	     if { $configuration__vipaddress_att != "" } {tmsh_create "/ ltm virtual" "$tmsh::app_name-att-[tmsh::get_field_value $portitem port] \{destination $configuration__vipaddress_att:[tmsh::get_field_value $portitem port] ip-protocol tcp  $profiles   mask 255.255.255.255  $snat  pool $tmsh::app_name-[tmsh::get_field_value $portitem port]  translate-address enabled    translate-port enabled vlans-disabled $ruleset     security-log-profiles replace-all-with \{ LoggingProfile-NetworkFirewall-Allow&Drop&Reject \}\}"}
 	     if { $configuration__vipaddress_tw != "" } {tmsh_create "/ ltm virtual" "$tmsh::app_name-tw-[tmsh::get_field_value $portitem port] \{destination $configuration__vipaddress_tw:[tmsh::get_field_value $portitem port] ip-protocol tcp  $profiles   mask 255.255.255.255  $snat  pool $tmsh::app_name-[tmsh::get_field_value $portitem port]  translate-address enabled    translate-port enabled vlans-disabled $ruleset     security-log-profiles replace-all-with \{ LoggingProfile-NetworkFirewall-Allow&Drop&Reject \}\}"}
-	     if { $configuration__vipaddress_internal != "" } {tmsh_create "/ ltm virtual" "$tmsh::app_name-[tmsh::get_field_value $portitem port] \{destination $configuration__vipaddress_tw:[tmsh::get_field_value $portitem port] ip-protocol tcp  $profiles   mask 255.255.255.255  $snat  pool $tmsh::app_name-[tmsh::get_field_value $portitem port]  translate-address enabled    translate-port enabled vlans-disabled $ruleset     security-log-profiles replace-all-with \{ LoggingProfile-NetworkFirewall-Allow&Drop&Reject \}\}"}
+	     if { $configuration__vipaddress_internal != "" } {tmsh_create "/ ltm virtual" "$tmsh::app_name-[tmsh::get_field_value $portitem port] \{destination $configuration__vipaddress_internal:[tmsh::get_field_value $portitem port] ip-protocol tcp  $profiles   mask 255.255.255.255  $snat  pool $tmsh::app_name-[tmsh::get_field_value $portitem port]  translate-address enabled    translate-port enabled vlans-disabled $ruleset     security-log-profiles replace-all-with \{ LoggingProfile-NetworkFirewall-Allow&Drop&Reject \}\}"}
 
          } else {
 
-	     if { $configuration__vipaddress_qwest != "" } {
-	          scan $configuration__vipaddress_qwest %d.%d.%d.%d a b c d
-	          tmsh_create "/ ltm virtual" "$tmsh::app_name-qwest-[tmsh::get_field_value $portitem port] \{destination 172.21.60.$d:[tmsh::get_field_value $portitem port] ip-protocol tcp  $profiles   mask 255.255.255.255    pool $tmsh::app_name-[tmsh::get_field_value $portitem port] snat automap translate-address enabled    translate-port enabled vlans-disabled $ruleset     security-log-profiles replace-all-with \{ LoggingProfile-NetworkFirewall-Allow&Drop&Reject \}\}"
 	     }
 	     if { $configuration__vipaddress_cox != "" } {
 	          scan $configuration__vipaddress_cox %d.%d.%d.%d a b c d
 	          tmsh_create "/ ltm virtual" "$tmsh::app_name-cox-[tmsh::get_field_value $portitem port] \{destination 172.21.61.$d:[tmsh::get_field_value $portitem port] ip-protocol tcp  $profiles   mask 255.255.255.255    pool $tmsh::app_name-[tmsh::get_field_value $portitem port] snat automap translate-address enabled    translate-port enabled vlans-disabled $ruleset     security-log-profiles replace-all-with \{ LoggingProfile-NetworkFirewall-Allow&Drop&Reject \}\}"
 	     }
-	     if { $configuration__vipaddress_att != "" } {
-	          scan $configuration__vipaddress_att %d.%d.%d.%d a b c d
-	          tmsh_create "/ ltm virtual" "$tmsh::app_name-att-[tmsh::get_field_value $portitem port] \{destination 172.21.62.$d:[tmsh::get_field_value $portitem port] ip-protocol tcp  $profiles   mask 255.255.255.255    pool $tmsh::app_name-[tmsh::get_field_value $portitem port] snat automap translate-address enabled    translate-port enabled vlans-disabled $ruleset     security-log-profiles replace-all-with \{ LoggingProfile-NetworkFirewall-Allow&Drop&Reject \}\}"
 	     }	     
 
 	     if { $configuration__vipaddress_tw != "" } {
@@ -105,11 +97,9 @@ if { [tmsh::get_field_value $portitem port] == "21" } {set profiles "profiles re
  section configuration {
  choice stagedeployment display "small" default "No" {"Yes", "No"}
  choice snat display "small" default "No" {"Yes", "No"}
- string vipaddress_qwest display "medium" default "65.119.20."  validator "IpAddress"
  string vipaddress_cox display "medium" default "70.167.166."  validator "IpAddress"
- string vipaddress_att display "medium"  default "207.212.82." validator "IpAddress"
  string vipaddress_tw display "medium"  default "66.162.150." validator "IpAddress"
- string vipaddress_internal display "medium"  validator "IpAddress"
+ string vipaddress_internal display "medium" default "172.21.111."  validator "IpAddress"
 
 	choice monitoryesno display "small" default "Yes" {"Yes", "No"}
  	table ports {
@@ -144,9 +134,7 @@ if { [tmsh::get_field_value $portitem port] == "21" } {set profiles "profiles re
      welcome.welcome "Introduction"
      configuration.ports.allowall "Accept All"
      configuration.stagedeployment "Stage this deployment (use temp IPs)"
-     configuration.vipaddress_qwest "VIP Address Qwest"
      configuration.vipaddress_cox "VIP Address Cox"
-     configuration.vipaddress_att "VIP Address AT&T"     
      configuration.vipaddress_tw "VIP Address TW" 
      configuration.vipaddress_internal "VIP Address Internal"
      configuration.ports "Listining on Ports"
