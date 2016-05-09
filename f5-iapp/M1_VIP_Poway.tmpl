@@ -3,7 +3,7 @@
 cli admin-partitions {
     update-partition Common
 }
-sys application template /Common/Mitchell1_VIP_Deployment_v2 {
+sys application template /Common/Mitchell1_VIP_Deployment {
     actions {
         definition {
             html-help {
@@ -59,16 +59,14 @@ if { [tmsh::get_field_value $portitem port] == "21" } {set profiles "profiles re
 	 if { $configuration__stagedeployment == "No" } {
 	     if { $configuration__vipaddress_cox != "" } {tmsh_create "/ ltm virtual" "$tmsh::app_name-cox-[tmsh::get_field_value $portitem port] \{destination $configuration__vipaddress_cox:[tmsh::get_field_value $portitem port] ip-protocol tcp  $profiles   mask 255.255.255.255  $snat  pool $tmsh::app_name-[tmsh::get_field_value $portitem port]  translate-address enabled    translate-port enabled vlans-disabled $ruleset    security-log-profiles replace-all-with \{ LoggingProfile-NetworkFirewall-Allow&Drop&Reject \}\}"}
 	     if { $configuration__vipaddress_tw != "" } {tmsh_create "/ ltm virtual" "$tmsh::app_name-tw-[tmsh::get_field_value $portitem port] \{destination $configuration__vipaddress_tw:[tmsh::get_field_value $portitem port] ip-protocol tcp  $profiles   mask 255.255.255.255  $snat  pool $tmsh::app_name-[tmsh::get_field_value $portitem port]  translate-address enabled    translate-port enabled vlans-disabled $ruleset     security-log-profiles replace-all-with \{ LoggingProfile-NetworkFirewall-Allow&Drop&Reject \}\}"}
-	     if { $configuration__vipaddress_internal != "" } {tmsh_create "/ ltm virtual" "$tmsh::app_name-[tmsh::get_field_value $portitem port] \{destination $configuration__vipaddress_internal:[tmsh::get_field_value $portitem port] ip-protocol tcp  $profiles   mask 255.255.255.255  $snat  pool $tmsh::app_name-[tmsh::get_field_value $portitem port]  translate-address enabled    translate-port enabled vlans-disabled $ruleset     security-log-profiles replace-all-with \{ LoggingProfile-NetworkFirewall-Allow&Drop&Reject \}\}"}
+	     if { $configuration__vipaddress_internal != "" } {tmsh_create "/ ltm virtual" "$tmsh::app_name-internal-[tmsh::get_field_value $portitem port] \{destination $configuration__vipaddress_internal:[tmsh::get_field_value $portitem port] ip-protocol tcp  $profiles   mask 255.255.255.255  $snat  pool $tmsh::app_name-[tmsh::get_field_value $portitem port]  translate-address enabled    translate-port enabled vlans-disabled $ruleset     security-log-profiles replace-all-with \{ LoggingProfile-NetworkFirewall-Allow&Drop&Reject \}\}"}
 
          } else {
 
-	     }
 	     if { $configuration__vipaddress_cox != "" } {
 	          scan $configuration__vipaddress_cox %d.%d.%d.%d a b c d
 	          tmsh_create "/ ltm virtual" "$tmsh::app_name-cox-[tmsh::get_field_value $portitem port] \{destination 172.21.61.$d:[tmsh::get_field_value $portitem port] ip-protocol tcp  $profiles   mask 255.255.255.255    pool $tmsh::app_name-[tmsh::get_field_value $portitem port] snat automap translate-address enabled    translate-port enabled vlans-disabled $ruleset     security-log-profiles replace-all-with \{ LoggingProfile-NetworkFirewall-Allow&Drop&Reject \}\}"
 	     }
-	     }	     
 
 	     if { $configuration__vipaddress_tw != "" } {
 	          scan $configuration__vipaddress_tw %d.%d.%d.%d a b c d
@@ -134,7 +132,7 @@ if { [tmsh::get_field_value $portitem port] == "21" } {set profiles "profiles re
      welcome.welcome "Introduction"
      configuration.ports.allowall "Accept All"
      configuration.stagedeployment "Stage this deployment (use temp IPs)"
-     configuration.vipaddress_cox "VIP Address Cox"
+     configuration.vipaddress_cox "VIP Address Cox"   
      configuration.vipaddress_tw "VIP Address TW" 
      configuration.vipaddress_internal "VIP Address Internal"
      configuration.ports "Listining on Ports"
