@@ -1,0 +1,100 @@
+**Scripts located at I:\NTServers\Scripts\NetApp\MonthlyDataUpdate**
+
+The Goal is to present a volume to Hosting and to Colo. So, we are taking the existing volume with the monthly web data
+
+Each month, we create a new snapshot and create a new flexclone for the monthly split (Odd or Even)
+
+
+Monthly Data Process
+
+-Delete share \\ranger\Data_Previous though Computer Management
+
+-Delete volume ranger_dp_previous in FilerView on M45
+
+-Rename the either ranger_dp_even or ranger_dp_odd to ranger_dp_previous(if the month is even rename ranger_dp_even and if the month is odd rename ranger_dp_odd) (Ex: If the current month is January to be deployed, the previous would be November, so rename November to be ranger_dp_previous, Jan becomes to new ranger_dp_odd)
+
+-Create share \\ranger\Data_Previous pointing at C:\vol\ranger_dp_previous\dp\DataProcess\Data (Administrators Full Control, Everyone Read)
+
+-Create Snapshot off of ranger_dp_fc M45 FilerView>Volumes>Snapshots>Add Select ranger_dp_fc for the volume, Snapshot Name: either ranger_dp_even or ranger_dp_odd,click add
+
+-Create Flexclone using the snapshot ranger_dp_even or ranger_dp_odd,flexClone Volumes>create,next,FlexClone Name: either ranger_dp_even or ranger_dp_odd,Parent Volume: ranger_dp_fc,space guarantee:none,next,Parent Volme Snapshot:either ranger_dp_even or ranger_dp_odd,next,commit,close
+
+-Manage Flexclone, check next to either ranger_dp_even or ranger_dp_odd, click Split Start,click OK 
+
+-- WAIT: (Takes about 16 hours, to check status ssh to m45 and run "vol clone split status")
+
+-Reduce size of the volume currently 375GB (300GB + 20%) M45>FilerView>Volumes>Manage>click on either ranger_dp_even or ranger_dp_odd>Resize -Storage>Next>Space Guarantee = None>Click Usable> Change to 375 GB>SnapShot Reserve = 0>Click Next>Click Commit>Click Close.
+
+-Multi-store>Manage Vfilers>ranger>Uncheck Configure vfiler ranger>Next>Add to Additional Paths "/vol/ranger_dp_xxxx">Next>Modify Vfiler>Next>Close
+
+-Update Ranger share - Open Computer Manager from workstation and connect to "RANGER">System Tools>Shared Folders>Shares>Change folder path for "Data_Next" to "C:\vol\ranger_dp_XXXX\dp\DataProcess\Data" > Administrators Full; others read>Finish
+ 
+-Delete Snapshot that was created on ranger_dp_fc - Volumes>Snapshots>Manage>Select from 'View Volume' dropdown menu "Ranger_dp_fc">View button> Check "ranger_dp_XXXX">Delete - 
+
+-- WAIT: (Til data has been approved by QA/Editoral) 
+
+:: For Poway Hosting ::
+-(If volume does not exist) Create volume on destination that is the same size as the volume that is going to be mirrored
+-Restrict the volume>NetApp System -Manager>M35>Storage>Volumes>Vfs02_xxxx_fc>Status>restrict
+
+(Through GUI otherwise use commandline/putty)
+-SnapMirror/Add select Destination Volume, Next
+			 Enter Source Filer and Source Location (Example: M45, ranger_dp_odd), Next
+			 Accept defaults, Next
+			 Select Use Custom Schedule and enter - - - -(Spaces between the dashes), Next
+			 Commit
+			 Close
+
+
+
+(Commandline/Putty)
+-Open Putty for M35 "snapmirror initialize -S M45:ranger_dp_even M35:vfs02_even_fc"  (Until GUI is fixed on M35)
+	To check status type "snapmirror status" (When state is "Snapmirrored", the mirror is complete.)
+
+(GUI)
+-SnapMirror/Manage click Advanced on the SnapMirror Entry that was created
+			 Initialize
+			 OK
+
+-- WAIT: an hour or so, check using "snapmirror status"
+
+			 
+
+- When Synch is complete SnapMirror/Manage click Advanced on the SnapMirror Entry that was created
+			 Click Quiesce
+				 :: via ssh comands "snapmirror quiesce vfs02_even_fc" or "snapmirror quiesce vfs02_odd_fc"
+			 Click Break
+				 :: via ssh commands "snapmirror break vfs02_even_fc" or "snapmirror break vfs02_odd_fc"
+
+-Add volume to vfiler via ssh
+			 vfiler add vfs02 /vol/vfs02_even_fc or vfiler add vfs02 /vol/vfs02_odd_fc
+
+
+
+
+:: For Scottsdale COLO hosting ::
+
+Colo Monthly Update on G35\SVFS01
+
+::Restrict volume 
+Volumes>Manage put check in either svfs01_even or svfs01_odd click 
+Volumes>Restrict, Click OK
+
+::Initialize the Volume
+SnapMirror>Manage Click Advanced on either nam45-nag35:ranger_dp_even or 
+SnapMirror>nam45-nag35:ranger_dp_odd, Click Initialize
+
+::Wait for Initialize to complete (about 45 Hours)
+
+::Quiesce and Break the Volume
+SnapMirror>Manage Click Advanced on either nam45-nag35:ranger_dp_even or 
+SnapMirror>nam45-nag35:ranger_dp_odd, Click Quiesce, Click OK, Click Break, 
+SnapMirror>Click OK
+
+::Change SVFS01 Staging Share to point to the new data In Computer Management connect to SVFS01 (May have to use a server in m1hosting.local) System Tools>Shared Folders>Share right click Staging Stop Sharing, click Yes, Right click New Share, Browse to DataProcess on the volume that was just mirrored,
+		Click Next, Change Share Name to Staging, Enter Description with Month and Year of the Data, Click Next, Check Administrators have full access; other users
+		have read-only access, Click Finish, Click Close Verify Data by going to \\SVFS01\Staging\Data and verify that there is a txt file that matches the Month and Year of the Data.
+
+::The Monday after Poway Data has gone live Change Data share to point at the new data In Computer Management connect to SVFS01 (May have to use a server in m1hosting.local) System Tools>Shared Folders>Share right click Data Stop Sharing, click Yes, Right click New Share, Browse to DataProcess on the volume that Staging is using,
+		Click Next, Change Share Name to Data, Enter Description with Month and Year of the Data, Click Next, Check Administrators have full access; other users
+		have read-only access, Click Finish, Click Close Verify Data by going to \\SVFS01\Data\Data and verify that there is a txt file that matches the Month and Year of the Data.

@@ -1,0 +1,29 @@
+﻿
+# The actual password file used by Apache
+# The webdav.conf file on each RHEL server
+# Should point to this file
+# Change the location to the desired location.
+$Plocation =  "C:\temp\MD5\Andrew\psswd.user"
+
+# The file created by Eric D.
+# Eric will place this file at \\vfs02\dpr
+# Every night at 7:45 PM
+$paccounts = gc C:\temp\MD5\Andrew\user.passwd 
+
+
+# Process each line in Eric's file
+# The out put will be a new MD5 hashed password for each account.
+
+foreach ($accountp in $paccounts)
+	{
+		$account = $accountp.split(":")[0]
+		$pass = $accountp.split(":")[1]
+		
+ 		# Run the windows version of the Apache password utility
+		# feed in the variable of the location of the final password file
+		# Feed in the variable of the Account to create a password for
+		# Feed ub the variable of the password to create for the account.
+		htpasswd.exe -mb $Plocation $account $pass 
+		
+		
+    }

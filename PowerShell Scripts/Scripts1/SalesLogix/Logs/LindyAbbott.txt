@@ -1,0 +1,28 @@
+PS C:\Users\bs7465-a> e:\scripts\Create-SlxUserV2.ps1
+Enter User Name: 607237
+Enter Last Name: Abbott
+Enter First Name: Lindy
+Enter Site Code: JMV4
+
+
+    Directory: \\genesis\ftproot
+
+
+Mode                LastWriteTime     Length Name
+----                -------------     ------ ----
+d----         4/13/2011   7:07 AM            607237
+
+
+    Directory: \\genesis\ftproot\607237
+
+
+Mode                LastWriteTime     Length Name
+----                -------------     ------ ----
+d----         4/13/2011   7:07 AM            FailedTrans
+d----         4/13/2011   7:07 AM            InFiles
+d----         4/13/2011   7:07 AM            OutFiles
+True
+True
+True
+True
+BiPaPaB8

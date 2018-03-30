@@ -1,0 +1,79 @@
+﻿
+#gc \\gremlin\d$\BKD_LOGS\NBULOGS\NBULOGS_4_18_2009.txt | 
+#Where-Object {$_.split(",")[0] -match "4/18/2009" -and $_.split(",")[11] -ne "0"-and $_.split(",")[14] -lt "2" } |
+#Out-File \\gremlin\d$\BKD_LOGS\NBULOGS\NBULogsToSQL.txt -append
+
+
+#$GetStat = gc \\gremlin\d$\BKD_LOGS\NBULOGS\NBULogsToSQL.txt
+$GetStat = gc \\gremlin\d$\BKD_LOGS\NBULOGS\NBULOGS_4_21_2009.txt |
+ Where-Object {$_.split(",")[8] -match "4/21/2009" -and $_.split(",")[1] -eq "0" -and  $_.split(",")[14] -lt "2" -and  $_.split(",")[3] -lt "2" -and $_.split(",")[3] -ne "NA"}
+
+#| 
+#Where-Object {$_.split(",")[1] -eq "0" -and $_.split(",")[3] -ne "0" }
+
+foreach ($Line in $GetStat ) 
+
+	{
+	    #$obj = new-object psobject
+		$buptype = $line.split(",")[1] 
+		$policy = $line.split(",")[4]
+		$Status = $line.split(",")[3]
+		$Client = $line.split(",")[6]
+		$Schedule = $line.split(",")[5]
+		$copy = $line.split(",")[14]
+		$date = $line.split(",")[8]
+		
+		# One way to create an object
+		
+		#$myobj = "" | select Policy,Schedule,Client,Status 
+		
+		#$myobj.Policy = $policy
+	    #$myobj.Schedule = $Schedule
+        #$myobj.Client = $Client
+		#$myobj.Status = $Status
+		#$myobj 
+		
+		# Another way to create an object
+		
+		#$obj = new-object psobject 
+                                                                      
+		#$obj | Add-Member -MemberType noteproperty `
+                 # -Name BupType `
+				 # -Value $buptype		
+		
+		#$obj | Add-Member -MemberType noteproperty `
+                #  -Name Policy `
+                #  -Value $policy   
+				  
+		#$obj | Add-Member -MemberType noteproperty `
+                 # -Name Schedule `
+                 # -Value $Schedule
+				  
+		#$obj | Add-Member -MemberType noteproperty `
+                  #-Name Client `
+                 # -Value $Client
+				  
+		#$obj | Add-Member -MemberType noteproperty `
+                  #-Name Status `
+                # -Value $Status 
+		
+		#$obj | where {$_.$buptype -eq "0"} | select $buptype,$policy
+		
+		
+		#"{0,-40} {1,-7} {2,-15} {3,-20}" -f $myobj.policy,$myobj.Schedule,$myobj.client,$myobj.status 
+		
+		
+		
+		"{0,-40} {1,-7} {2,-15} {3,-5} {4,-5} {5,-5} {6,-5}" -f $policy,$Schedule,$client,$status,$buptype,$copy,$date
+		
+	}
+$GetStat.count
+
+#gc \\gremlin\d$\BKD_LOGS\NBULOGS\NBULOGS_4_19_2009.txt | 
+#foreach-Object {$_.split(",")[3]} | Where-Object {$_-ne "0"}
+
+#gc \\gremlin\d$\BKD_LOGS\NBULOGS\NBULOGS_4_19_2009.txt | 
+#foreach-Object {$_.split(",")[14]} | Where-Object {$_-ne "0"}
+
+#gc \\gremlin\d$\BKD_LOGS\NBULOGS\NBULOGS_4_18_2009.txt | 
+#foreach-object {$_.split(",",[StringSplitOptions]::RemoveEmptyEntries)[1]}

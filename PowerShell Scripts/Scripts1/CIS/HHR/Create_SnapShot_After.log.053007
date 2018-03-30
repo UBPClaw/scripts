@@ -1,0 +1,20 @@
+05-30-2007 09:50
+
+Group	PairVol(L/R) (Port#,TID, LU-M) ,Seq#,LDEV#.P/S,Status,   % ,P-LDEV# M
+CIS_After	ALUN00(L)   (CL1-B-2,27,   6-1 )82751   157.P-VOL PSUS,   99    1092 W
+CIS_After	ALUN00(R)   (CL1-B-1,27,  16-0 )82751  1092.S-VOL SSUS,   99     157 -
+CIS_After	ALUN01(L)   (CL1-B-2,27,   7-1 )82751   161.P-VOL PSUS,   99    1093 W
+CIS_After	ALUN01(R)   (CL1-B-1,27,  17-0 )82751  1093.S-VOL SSUS,   99     161 -
+CIS_After	ALUN02(L)   (CL1-B-2,27,   8-1 )82751   173.P-VOL PSUS,  100    1094 W
+CIS_After	ALUN02(R)   (CL1-B-1,27,  18-0 )82751  1094.S-VOL SSUS,  100     173 -
+CIS_After	ALUN03(L)   (CL1-B-2,27,   9-1 )82751   182.P-VOL PSUS,  100    1095 W
+CIS_After	ALUN03(R)   (CL1-B-1,27,  19-0 )82751  1095.S-VOL SSUS,  100     182 -
+Importing Disk Group on Remote host
+***********************************
+Successfully rescanned
+
+Successfully imported dynamic disk group
+Name of the new disk group is CIS_After
+
+V-77-57616-273: DriveLetter Y: is not available
+

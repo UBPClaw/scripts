@@ -1,0 +1,10 @@
+
+rsh m35 vol clone create dakota_transfer_sql -b dakota_snap_transfers_fc hourly.0
+rsh M35 vol online dakota_transfer_sql
+
+rsh M35 vol offline dakota_transfer_sql
+rsh M35 vol destroy dakota_transfer_sql -f
+
+rsh M35 vfiler run dakota cifs shares -add SQLTRANSFERS /vol/dakota_transfer_sql 
+rsh M35 vfiler run dakota cifs access SQLTRANSFERS repair\domainadmins Full Control
+rsh M35 vfiler run dakota cifs access SQLTRANSFERS repair\g_dev Read

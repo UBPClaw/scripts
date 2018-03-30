@@ -1,0 +1,1 @@
+stsadm -o createsite -url http://intranetdev/  -owneremail administrator@mitchell1.com -ownerlogin repair\mricadmin -ownername mricadmin -lcid 1033 -sitetemplate STS#0 -title "INTRANETDEV" -description "Development site for the intranet"

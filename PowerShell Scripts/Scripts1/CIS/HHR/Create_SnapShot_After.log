@@ -1,0 +1,15 @@
+12-14-2009 10:09
+
+Volume 'cis_clone_after' destroyed.
+deleting snapshot...
+creating snapshot...
+Creation of clone volume 'cis_clone_after' has completed.
+Importing Disk Group on Remote host
+***********************************
+Successfully rescanned
+
+Successfully imported dynamic disk group
+Name of the new disk group is CIS_After
+
+V-77-57616-273: DriveLetter U: is not available
+

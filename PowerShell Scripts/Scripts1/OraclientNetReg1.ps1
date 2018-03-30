@@ -1,0 +1,90 @@
+# ==============================================================================================
+# 
+# Microsoft PowerShell File 
+# 
+# NAME: OraclientNetReg1.ps1
+# 
+# DATE: 7-11-07
+# 
+# COMMENT: Read file containing computer names, Add to Path statement, Add reg entries for Oracle Client
+# 
+# ==============================================================================================
+
+# dot source file to add registry functions
+. \\malibu\it\NTServers\Scripts\LibraryRegistry.ps1
+
+# Function To ping computer to see if it is alive
+Function Ping-Name {
+	  PROCESS { $wmi = get-wmiobject -query "SELECT * FROM Win32_PingStatus WHERE Address = '$_'"
+	   if ($wmi.StatusCode -eq 0) {
+	   	  $_
+ 	   } else {
+ 	   Write-Log "$_ not answering ping" $ErrorLog
+ 	   }
+   }
+}
+
+# Funtion to get the time and date to string
+Function Time-Stamp {
+ (get-date).toString('yyyyMMddhhmmss')
+}
+
+# Funtion to write to screen and to logfile
+Function Write-Log {
+   Param([string]$msg,[string]$file)
+   Write-Host "$msg"
+   $msg | Out-File -FilePath $file -Append
+}
+
+# Change Log Path to your needs
+$log = "\\malibu\it\Oracle\InstallLogs\OraClientNetReg"+(Time-Stamp)+".log"
+$ErrorLog = "\\malibu\it\Oracle\InstallLogs\OraClientNetReg_error"+(Time-Stamp)+".log"
+
+# Start Logging
+Write-Log "Starting at $([System.DateTime]::NOW)" $log
+
+# Get list of computers to modify
+#$complist = get-content \\malibu\it\Oracle\InstallLogs\citrix.txt
+$complist = get-content \\malibu\it\Oracle\InstallLogs\oranetinstall.txt
+
+# String to add to path
+$oranet = "P:\OracleClient\10.2.0\rt1\bin"
+
+$complist | % {
+    $cn = $_
+    write-log "Started $cn" $log
+    $cn | Ping-Name | % {
+		$old = (get-regvalue "$cn" "System\CurrentControlSet\Control\Session Manager\Environment" "Path" "EXP").svalue 
+		 if ($old -notcontains $oranet){
+		 	$new = "$oranet;$old"
+    	set-regvalue "$cn" "System\CurrentControlSet\Control\Session Manager\Environment" "Path" "$new" "EXP"
+    	set-regkey "$cn" "SOFTWARE\ORACLE\KEY_OraClient10g_rt1"
+    	set-regvalue "$cn" "SOFTWARE\ORACLE\KEY_OraClient10g_rt1" "ORACLE_HOME" "P:\OracleClient\10.2.0\rt1" "STR"
+    	set-regvalue "$cn" "SOFTWARE\ORACLE\KEY_OraClient10g_rt1" "ORACLE_HOME_NAME" "OraClient10g_rt1" "STR"
+    	set-regvalue "$cn" "SOFTWARE\ORACLE\KEY_OraClient10g_rt1" "ORACLE_GROUP_NAME" "Oracle - OraClient10g_rt1" "STR"
+    	set-regvalue "$cn" "SOFTWARE\ORACLE\KEY_OraClient10g_rt1" "ORACLE_BUNDLE_NAME" "Enterprise" "STR"
+    	set-regvalue "$cn" "SOFTWARE\ORACLE\KEY_OraClient10g_rt1" "NLS_LANG" "AMERICAN_AMERICA.WE8MSWIN1252" "STR"
+    	set-regvalue "$cn" "SOFTWARE\ORACLE\KEY_OraClient10g_rt1" "StatementCacheSize" "0" "STR"
+    	set-regvalue "$cn" "SOFTWARE\ORACLE\KEY_OraClient10g_rt1" "OLEDB" "P:\OracleClient\10.2.0\rt1\oledb\mesg" "STR"
+    	set-regvalue "$cn" "SOFTWARE\ORACLE\KEY_OraClient10g_rt1" "StmtCacheSize" "0" "STR"
+    	set-regvalue "$cn" "SOFTWARE\ORACLE\KEY_OraClient10g_rt1" "SQLPATH" "P:\OracleClient\10.2.0\rt1\dbs" "STR"
+    	set-regvalue "$cn" "SOFTWARE\ORACLE\KEY_OraClient10g_rt1" "OO4O" "P:OracleClient\10.2.0\rt1\oo4o\mesg" "STR"
+    	set-regvalue "$cn" "SOFTWARE\ORACLE\KEY_OraClient10g_rt1" "ORACLE_HOME_KEY" "SOFTWARE\ORACLE\KEY_OraClient10g_rt1" "STR"
+    	set-regvalue "$cn" "SOFTWARE\ORACLE\KEY_OraClient10g_rt1" "TNS_ADMIN" "\\dakota\apps\OracleTNS" "STR"
+    	set-regkey "$cn" "SOFTWARE\ODBC\ODBCINST.INI\Oracle in OraClient10g_rt1" "STR"
+    	set-regvalue "$cn" "SOFTWARE\ODBC\ODBCINST.INI\Oracle in OraClient10g_rt1" "APILevel" "1" "STR"
+    	set-regvalue "$cn" "SOFTWARE\ODBC\ODBCINST.INI\Oracle in OraClient10g_rt1" "CPTimeout" "60" "STR"
+    	set-regvalue "$cn" "SOFTWARE\ODBC\ODBCINST.INI\Oracle in OraClient10g_rt1" "ConnectFunctions" "YYY" "STR"
+    	set-regvalue "$cn" "SOFTWARE\ODBC\ODBCINST.INI\Oracle in OraClient10g_rt1" "Driver" "P:\OracleClient\10.2.0\rt1\BIN\SQORA32.DLL" "STR"
+    	set-regvalue "$cn" "SOFTWARE\ODBC\ODBCINST.INI\Oracle in OraClient10g_rt1" "DriverODBCVer" "03.51" "STR"
+    	set-regvalue "$cn" "SOFTWARE\ODBC\ODBCINST.INI\Oracle in OraClient10g_rt1" "FileUsage" "0" "STR"
+    	set-regvalue "$cn" "SOFTWARE\ODBC\ODBCINST.INI\Oracle in OraClient10g_rt1" "Setup" "P:\OracleClient\10.2.0\rt1\BIN\SQORAS32.DLL" "STR"
+    	set-regvalue "$cn" "SOFTWARE\ODBC\ODBCINST.INI\Oracle in OraClient10g_rt1" "SQLLevel" "1" "STR"
+    	set-regvalue "$cn" "SOFTWARE\ODBC\ODBCINST.INI\ODBC Drivers" "Oracle in OraClient10g_rt1" "Installed" "STR"
+    	write-Log "$cn has been updated" $log}
+    	else
+      {write-Log "$cn already has the correct path" $log}
+   }
+}
+
+Write-Log "End Check at $([system.DateTime]::NOW)" $log

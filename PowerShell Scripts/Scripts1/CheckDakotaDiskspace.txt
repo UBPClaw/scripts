@@ -1,0 +1,3 @@
+diruse /m /* \\dakota\dept >D:\workdir\Diruse\dakdept_030212.txt
+diruse /m /* \\dakota\user >D:\workdir\Diruse\dakuser_030212.txt
+diruse /m /* \\dakota\apps >D:\workdir\Diruse\dakapps_030212.txt

@@ -1,0 +1,5 @@
+Open Powershell with your Admin Account
+
+import-module ActiveDirectory
+
+get-adgroupmember "G_CitrixAccess" -Recursive | select name | out-file c:\temp\g_citrixaccess.txt -encoding ASCII

@@ -1,0 +1,30 @@
+Updating to Oracle client 10.0 on Meps computers
+
+1. Get a list of computer names for the Editorial and Graphics department
+	A. Get all AD computers by running this script; \\malibu\it\NTServers\Scripts\OraClientRollOut\ADPC2User.ps1
+	   This script will output a list of computers with the last login to C:\workdir\meps\ADPC2User20080804025003.log. The
+	   actual name of the log depends on the date.
+	   
+	B. Depending on the department, run GetGraphicsMembers.ps1 to get a list of everyone in the graphics department. This will
+	   give you the account name for each user in the graphics department. For graphics, look in 
+	   \\malibu\it\NTServers\Scripts\OraClientRollOut\Graphics and for Editorial, look in 
+	   \\malibu\it\NTServers\Scripts\OraClientRollOut\Editorial. Be sure to open each script and modify paths to match your
+	   desired output.
+	   
+	C. Attach a computer name to a user by launching \\malibu\it\NTServers\Scripts\OraClientRollOut\Graphics\get-Graphicspc.ps1
+	   or  \\malibu\it\NTServers\Scripts\OraClientRollOut\get-Editorialpc.ps1. This script will link the account name from
+	   B. to a computer name from step A. The comuter name will then be outputed. Verify desired paths prior to running this script
+	   
+2. Now that you have computer names, verify that the computer has not already been updated with the oracle client.
+	A. Run GetOraclePaths.ps1. This script should point at the file that contains a list of the computers from C. of step 1.
+	If the computer already has a path that begins with; P:\OracleClient\10.2.0\rt1\bin. Then you will not add this computer
+	to the list of computers to get the oracle update. If the path is not as listed above, add the computer to the list at
+	\\malibu\it\Oracle\InstallLogs\oranetinstall.txt
+
+3. Run the update script
+	A. Prior to running the update script, open the script and verify the paths. The script is located at;
+	   \\malibu\it\NTServers\Scripts\OraclientNetReg1.ps1. The script should point to the location above;
+	   \\malibu\it\Oracle\InstallLogs\oranetinstall.txt
+ 	B. After the install has completed, look at the log to verify all computers were updated. The log will have the date of the
+ 	   install and is located at \\malibu\it\Oracle\InstallLogs
+	   

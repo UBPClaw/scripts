@@ -1,0 +1,72 @@
+﻿# ==============================================================================================
+#
+# Microsoft PowerShell File
+#
+# NAME: MoveHostingIISLogs.ps1 (The new improved)
+#
+# Location: NTServers\Scripts\IISLOGS\MoveHostingIISLogs.ps1
+#
+# DATE: 12/14/2009
+#
+# Author: Bryan DeBrun
+#
+# COMMENT: Move IIS logs from Hosting Web servers (Pweb08,9,10) 
+#          to \\vfs02\Transfers\IISLOGS
+#          This script will be scheduled from each of the web servers to
+#          run daily at 12:30 AM
+#
+#	       This script will search for all running websites, retreive the web site id, the
+#          name of the site and then create a folder with the name, rename the log file to
+#          account for the server and then move the log file to the transfers share
+#          If a pweb server has 3 running sites, W3SVC1, 2 and 3. This script will move logs
+#          for the running web sites to a folder with the sites name on the transfers directory
+#          The log file will also me renamed adding the web server name to the file.
+#
+# Prerequisites: Powershell must be install, set the execution policy to remote signed
+#                A scheduled task must be created on each web server.
+#                The target location for the log files must exist.
+#                The source of the log files must exist.
+# ==============================================================================================
+
+# Get the server name
+$ghost = gc env:computername
+
+# Get yesterday's date year month and day 091222
+$YestDay = (get-date (get-date).AddDays(-1) -f yyMMdd)
+
+# Set the source location of the log files.
+$logLoc = "E:\logfiles"
+
+# Set the target location for where the files will be moved to.
+$Target = "\\vfs02\Transfers\IISLOGS"
+
+# Use WMI to get the Website ID and Web site name where the web site is running
+# For each running site, rename the site adding the web server name.
+# For each running site, move the log file to the target location
+
+$iiss = Get-WmiObject -Namespace "root\webadministration" -Class site |
+where {$_.ServerAutoStart -eq "True"}
+	
+	foreach ($Wsite in $iiss)
+		{
+			$name = $wsite.name
+	        $id = $wsite.id
+			New-Item $Target\$name -type directory		
+		
+	        $logs = Get-ChildItem $logloc\W3SVC$id |
+		      where {$_.name -match "u_ex"+$YestDay } 
+			  foreach ($IIsfile in $logs)
+			  
+			  	{
+				    $filename = $IIsfile.name -replace  $IISfile.extension, ""
+					$newname = "${FileName}_${ghost}.log"
+					Rename-Item -Path $IIsfile.fullname -NewName $Newname
+					Move-Item $logloc\W3SVC$id\$Newname $Target\$name
+			  			  
+			    }
+			  
+			  			  
+			  
+			  
+		      
+	    }

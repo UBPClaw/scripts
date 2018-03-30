@@ -1,0 +1,3 @@
+#find pc that locked out account
+Get-WinEvent -FilterHashtable @{LogName='Security';Id=4740} -ComputerName (Get-ADDomainController -Filter * | where-object {$_.OperationMasterRoles -contains "PDCEmulator"}).Name | ft @{Name="User";Expression={$_.Properties[0].Value}},@{Name="Computer";Expression={$_.Properties[1].Value}},@{Name="Time";Expression={$_.TimeCreated}}
+Read-Host -Prompt "Press Enter to exit"

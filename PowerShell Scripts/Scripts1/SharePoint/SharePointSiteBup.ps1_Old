@@ -1,0 +1,22 @@
+﻿Remove-Item e:\temp\spsites.txt
+Remove-Item e:\temp\spsitesII.txt
+$BUPdate =get-date -Format M-d-yyyy-h-m-s
+
+
+stsadm -o enumsites -url http://intranet | Out-File e:\temp\spsites.txt -Append 
+$getsites = gc e:\temp\spsites.txt |
+Where-Object{ $_-match "sites" } |
+foreach { $_.split(" ",[StringSplitOptions]::RemoveEmptyEntries)[1]}
+$getsites | Where-Object { $_-match "sites" } | 
+foreach { $_.split("\/",[StringSplitOptions]::RemoveEmptyEntries)[3]} |
+ForEach-Object {$_-replace "`"",""}|
+out-file e:\temp\spsitesII.txt
+
+$BupSites = gc e:\temp\spsitesII.txt
+	foreach ($sharepointsite in $BupSites)
+		{
+			stsadm -o backup -url http://intranet/sites/$sharepointsite -filename \\m1ddlocal\backup\poway\SharePointSites\$sharepointsite"_"$BUPdate.bak
+		}
+
+
+stsadm -o backup -url http://intranet -filename \\m1ddlocal\backup\poway\SharePointSites\Intranet"_"$BUPdate.bak

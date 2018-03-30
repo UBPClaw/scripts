@@ -1,0 +1,5 @@
+add-pssnapin Quest.ActiveRoles.ADManagement
+#Get-QADUser -LdapFilter '(!(UserAccountControl:1.2.840.113556.1.4.803:=2))' | select Name | sort Name | out-file C:\temp\activeuser.txt
+#send-mailmessage -to "Nita Herrera <Nita.Herrera@mitchell1.com>" -from "<administrator@Mitchell1.com>" -subject "Weekly Active Accounts" -body "Active Accounts File is attached" -Attachment "C:\temp\activeuser.txt" -smtpserver smtp.corp.mitchellrepair.com
+Get-QADUser -LdapFilter '(!(UserAccountControl:1.2.840.113556.1.4.803:=2))' | select Name,Description | sort Name | export-csv C:\temp\activeuser.csv -notype
+send-mailmessage -to "Nita Herrera <Nita.Herrera@mitchell1.com>" -from "<administrator@Mitchell1.com>" -subject "Weekly Active Accounts" -body "Active Accounts File is attached" -Attachment "C:\temp\activeuser.csv" -smtpserver smtp.corp.mitchellrepair.com

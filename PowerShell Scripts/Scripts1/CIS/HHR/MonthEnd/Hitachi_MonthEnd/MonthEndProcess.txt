@@ -1,0 +1,143 @@
+MonthEnd Process
+
+1. Resynch the before volume with the main CIS_DG via A Scheduled task called MonthEnd_Resync_SnapShot_Before, which
+   runs at 4:00 AM the day of the month end process. 
+   The scheduled task runs E:\Scripts\MonthEnd\MonthEnd_Resync_SnapShot_Before.cmd. After the volume is synchronized,
+   an email will be sent 
+2. 
+
+
+1. Scheduled task
+2. Resynch Before Volume
+3. Email CIS Programmer to begin Month End
+4. Scheduled task waiting for the monthend.txt file
+5. Bat file runs to stop services
+6. Create Before Volume
+7. Start services
+8. Look to see if the X drive on XLR exists (Before volume)
+9. Email Sys Admin and CIS programmer if the X dirve on XLR (Before Volume) is there.
+End
+
+
+1.  Scheduled Task
+2.  E:\Scripts\MonthEnd\MonthEnd_Resync_SnapShot_Before.cmd
+3.  E:\Scripts\MonthEnd\MonthEndEmails\MonthEndVolumeSynched.bat
+4.  Send EMAIL informing CIS programmer to begin Month End
+5.  Scheduled Task
+6.  E:\Scripts\MonthEnd\LookFor_MonthEnd.bat
+7.  E:\Scripts\MonthEnd\MonthEnd_Stop_Services.bat
+8.  E:\Scripts\MonthEnd\MonthEnd_Create_SnapShot_Before.cmd
+9.  E:\Scripts\MonthEnd\MonthEnd_Start_Services.bat
+10. E:\Scripts\MonthEnd\LookFor_XLR_X.bat
+11. Send EMAIL to confirm the existance of the X drive on XLR (Before Volume)
+
+End
+
+Troubleshooting
+
+A couple of encountered issues:
+
+1. Normal Day end snap shots for before, or after have failed. 
+2. Month End Snap Shot for the before volume has failed for 2 month end periods in a row.
+
+
+*****Normal Day ENd Snap Shot fails
+1. This is usualy caused by the VSS Service (Volume Shadow Copy Service)
+   You will be sent a page stating the Before/after snap shot failed. The Snapshot is
+   usually stuck in between(Snapped deported, but not imported on the standby server) If
+   this is the case, you will see Blue explanation point
+
+Here's how to force the snapshot:
+
+1. Open Veritas Enterprise Administrator
+2. Expand Local Host
+3. Verify that you see blue explanation points, and not red X's. If you see Red
+   X's, then see the Month End Snap Shot Failure section.
+4. If the Before snapshot failed, navigate to E:\Scripts and launch Create_SnapShot_Before.cmd
+   If the After snapshot failed, navigate to E:\Scripts and launch Create_SnapShot_After.cmd
+   You can see the results at c:\Create_SnapShot_After.log or Create_SnapShot_Before.log
+5. If the explanation points go away, and you see the volume on XLR, then you fixed it
+   If the explanation points did not go away, then go to services and stop/start 
+   Veritas VSS provider, and repeat step 4.
+6. If the blue explanation point does not go away, then repeat step 5, and then run:
+    If Before volume is the issue.  e:\scripts\Resync_SnapShot_Before.cmd
+    If After volume is the issue.  e:\scripts\Resync_SnapShot_After.cmd
+   If Step 6 worked, then manualy snap the desired volume by:
+    Before volume: E:\scripts\Create_SnapShot_Before.cmd
+    After Volume:  E:\scripts\Create_SnapShot_After.cmd
+   If Step 6 did not work, and you still see the blue explanation points do this
+ 
+
+Before Volume Failure From the command line
+   
+   1. psexec \\xlr vxdg -g CIS_Before -f deport>>C:\Resync_SnapShot_Before.log
+   2. vxassist rescan
+   3. vxdg -g CIS_Before -f -C import
+   4. psexec \\xlr vxassist rescan
+   5. vxdg -g CIS_Before -n CIS_DG -C -f join
+   6. vxassist -f -gCIS_DG snapback volume1
+
+After Volume Failure From the command line
+   
+   1. psexec \\xlr vxdg -g CIS_After -f deport
+   2. vxassist rescan
+   3. vxdg -g CIS_After -f -C import
+   4. psexec \\xlr vxassist rescan
+   5. vxdg -g CIS_After -n CIS_DG -C -f join
+   6. vxassist -f -gCIS_DG snapback volume1
+ 
+If the above steps fail to resolve the issue, then open a ticket with Veritas 
+
+*****End Normal Day End Troubleshooting
+
+*****Month End SnapShot Failure
+
+Most likely, the Red X indicates a problem with a disk. In the past the problems has
+been with the EMC disks. RDP to the Lotus server, locate the the ECC console icon on the 
+dekstop, and double click it. When the Gui interface comes up, click on the submit button.
+Enter the correct user name and password stored as EMC Switch & Control Center in 
+Password agent. use the Emc Control Center username and password. Once the console pops up,
+Look at the alerts. If there is an EMC disk problem, it will be displayed in the alert
+console.
+
+
+
+
+If there are problems with the EMC disks, give EMC a call.
+
+After the problem with the disks have been fixed. 
+
+1. From Eagle/XLR (CIS_DG on line Cluster Server), launch  Veritas Enterprise Administrator
+2. Click Actions and select Rescan.
+3. The Read Xs should go away.
+4. Follow steps 1-6 of forcing a volume snapshot listed above.
+
+
+
+
+
+
+
+
+***The below error is a result of the snap shots failing because of The Veritas Shadow Copy Service
+***The failure of this service contributes to the failure of the Normal Day End Snap Shot failures
+
+Event Type:	Error
+Event Source:	VSS
+Event Category:	None
+Event ID:	12293
+Date:		8/28/2005
+Time:		4:30:25 PM
+User:		N/A
+Computer:	EAGLE
+Description:
+Volume Shadow Copy Service error: Error calling a routine on the Shadow Copy Provider {637528cf-81b2-4e05-8bd2-74b33b6f893c}. Routine details IVssSnapshotProvider::IsVolumeSupported() failed with 0x800706bf [hr = 0x800706bf].
+
+For more information, see Help and Support Center at http://go.microsoft.com/fwlink/events.asp.
+Data:
+0000: 43 4f 52 43 4f 4f 52 43   CORCOORC
+0008: 31 33 39 38 00 00 00 00   1398....
+0010: 43 4f 52 43 4f 4f 52 43   CORCOORC
+0018: 31 33 33 39 00 00 00 00   1339....
+
+

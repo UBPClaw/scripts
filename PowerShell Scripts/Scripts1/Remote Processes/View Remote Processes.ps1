@@ -1,0 +1,1 @@
+﻿Get-WmiObject win32_process -ComputerName RB6203 | Select-Object CSName,Description,Processid,WS,Path | Sort-Object WS -Descending | Format-Table * -AutoSize

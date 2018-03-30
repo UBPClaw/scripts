@@ -1,0 +1,10 @@
+Set proxy in IE
+From administrative command prompt run
+
+netsh winhttp show proxy
+
+if direct access run the following commands:
+
+netsh
+winhttp
+import proxy source=ie
