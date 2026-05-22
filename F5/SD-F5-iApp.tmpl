@@ -24,7 +24,17 @@ proc tmsh_create { component arguments } {
 }
 
 
+proc asm_policy_for_virtual { virtual_name selected_policy } {
+    if { ($selected_policy == "") || ($selected_policy == " ") } {
+        return ""
+    }
+    set l7_policy "asm_auto_l7_policy__$virtual_name"
+    tmsh_create "/ ltm policy" "$l7_policy legacy controls replace-all-with \{ asm \} requires replace-all-with \{ http \} rules replace-all-with \{ default \{ ordinal 1 actions replace-all-with \{ 1 \{ asm enable policy $selected_policy \} \} \} \} strategy first-match"
+    return "policies replace-all-with \{ $l7_policy \}"
+}
+
 if { $configuration__snat == "Yes" } {set snat "snat automap"} else {set snat "snat none"}
+set has_asm_policy [expr {($configuration__asmpolicy != "") && ($configuration__asmpolicy != " ")}]
 
 foreach portitem $::configuration__ports  {
     if { [tmsh::get_field_value $portitem allowall] } {
@@ -41,6 +51,21 @@ foreach portitem $::configuration__ports  {
     if { [tmsh::get_field_value $portitem port] == "80" } {set profiles "profiles replace-all-with \{ http \{ \} tcp \{ \} \} "}
     if { [tmsh::get_field_value $portitem port] == "443" || [tmsh::get_field_value $portitem port] == "443" } {set profiles "profiles replace-all-with \{  tcp \{ \} $sslprofile\} "}
     if { [tmsh::get_field_value $portitem port] == "21" } {set profiles "profiles replace-all-with \{ ftp \{ \} tcp \{ \}\} source-port change"}
+    if { $has_asm_policy } {
+        set profile_suffix ""
+        if { [regexp { source-port change$} $profiles] } {
+            set profile_suffix " source-port change"
+            regsub { source-port change$} $profiles "" profiles
+        }
+        set profiles [string trimright $profiles]
+        if { [string first {http { }} $profiles] == -1 } {
+            set profiles "[string range $profiles 0 end-1] http \{ \} \}"
+        }
+        if { [string first {websecurity { }} $profiles] == -1 } {
+            set profiles "[string range $profiles 0 end-1] websecurity \{ \} \}"
+        }
+        append profiles $profile_suffix
+    }
 
     set irules "rules \{ $configuration__irules \}"
 
@@ -59,29 +84,32 @@ foreach portitem $::configuration__ports  {
     if { $configuration__stagedeployment == "No" } {
 
         if { $configuration__vipaddress_att != "" } {
+            set asm_policy [asm_policy_for_virtual "$tmsh::app_name-att-[tmsh::get_field_value $portitem port]" $configuration__asmpolicy]
             if { ($configuration__redirect == "Yes") && ([tmsh::get_field_value $portitem port] == "443") } {
-            tmsh_create "/ ltm virtual" "$tmsh::app_name-att-[tmsh::get_field_value $portitem port] \{destination $configuration__vipaddress_att:[tmsh::get_field_value $portitem port] ip-protocol tcp  $profiles   mask 255.255.255.255  $snat  $irules pool $tmsh::app_name-[tmsh::get_field_value $portitem port]  translate-address enabled    translate-port enabled vlans-disabled $ruleset    security-log-profiles replace-all-with \{ m1-base-logging \}\}"
+            tmsh_create "/ ltm virtual" "$tmsh::app_name-att-[tmsh::get_field_value $portitem port] \{destination $configuration__vipaddress_att:[tmsh::get_field_value $portitem port] ip-protocol tcp  $profiles   mask 255.255.255.255  $snat  $asm_policy $irules pool $tmsh::app_name-[tmsh::get_field_value $portitem port]  translate-address enabled    translate-port enabled vlans-disabled $ruleset    security-log-profiles replace-all-with \{ m1-base-logging \}\}"
             tmsh_create "/ ltm virtual" "$tmsh::app_name-att-80-redir \{destination $configuration__vipaddress_att:80 ip-protocol tcp profiles replace-all-with \{ http \{ \} tcp \{ \} \}   mask 255.255.255.255   rules \{ _sys_https_redirect \} vlans-disabled $ruleset     security-log-profiles replace-all-with \{ m1-base-logging \}\}"
             } else {
-            tmsh_create "/ ltm virtual" "$tmsh::app_name-att-[tmsh::get_field_value $portitem port] \{destination $configuration__vipaddress_att:[tmsh::get_field_value $portitem port] ip-protocol tcp  $profiles   mask 255.255.255.255  $snat  $irules pool $tmsh::app_name-[tmsh::get_field_value $portitem port]  translate-address enabled    translate-port enabled vlans-disabled $ruleset    security-log-profiles replace-all-with \{ m1-base-logging \}\}"
+            tmsh_create "/ ltm virtual" "$tmsh::app_name-att-[tmsh::get_field_value $portitem port] \{destination $configuration__vipaddress_att:[tmsh::get_field_value $portitem port] ip-protocol tcp  $profiles   mask 255.255.255.255  $snat  $asm_policy $irules pool $tmsh::app_name-[tmsh::get_field_value $portitem port]  translate-address enabled    translate-port enabled vlans-disabled $ruleset    security-log-profiles replace-all-with \{ m1-base-logging \}\}"
             }
         }
 
         if { $configuration__vipaddress_cox_10g != "" } {
+            set asm_policy [asm_policy_for_virtual "$tmsh::app_name-cox-10g-[tmsh::get_field_value $portitem port]" $configuration__asmpolicy]
             if { ($configuration__redirect == "Yes") && ([tmsh::get_field_value $portitem port] == "443") } {
-            tmsh_create "/ ltm virtual" "$tmsh::app_name-cox-10g-[tmsh::get_field_value $portitem port] \{destination $configuration__vipaddress_cox_10g:[tmsh::get_field_value $portitem port] ip-protocol tcp  $profiles   mask 255.255.255.255  $snat  $irules pool $tmsh::app_name-[tmsh::get_field_value $portitem port]  translate-address enabled    translate-port enabled vlans-disabled $ruleset    security-log-profiles replace-all-with \{ m1-base-logging \}\}"
+            tmsh_create "/ ltm virtual" "$tmsh::app_name-cox-10g-[tmsh::get_field_value $portitem port] \{destination $configuration__vipaddress_cox_10g:[tmsh::get_field_value $portitem port] ip-protocol tcp  $profiles   mask 255.255.255.255  $snat  $asm_policy $irules pool $tmsh::app_name-[tmsh::get_field_value $portitem port]  translate-address enabled    translate-port enabled vlans-disabled $ruleset    security-log-profiles replace-all-with \{ m1-base-logging \}\}"
             tmsh_create "/ ltm virtual" "$tmsh::app_name-cox-10g-80-redir \{destination $configuration__vipaddress_cox_10g:80 ip-protocol tcp profiles replace-all-with \{ http \{ \} tcp \{ \} \}   mask 255.255.255.255   rules \{ _sys_https_redirect \} vlans-disabled $ruleset     security-log-profiles replace-all-with \{ m1-base-logging \}\}"
             } else {
-            tmsh_create "/ ltm virtual" "$tmsh::app_name-cox-10g-[tmsh::get_field_value $portitem port] \{destination $configuration__vipaddress_cox_10g:[tmsh::get_field_value $portitem port] ip-protocol tcp  $profiles   mask 255.255.255.255  $snat  $irules pool $tmsh::app_name-[tmsh::get_field_value $portitem port]  translate-address enabled    translate-port enabled vlans-disabled $ruleset    security-log-profiles replace-all-with \{ m1-base-logging \}\}"
+            tmsh_create "/ ltm virtual" "$tmsh::app_name-cox-10g-[tmsh::get_field_value $portitem port] \{destination $configuration__vipaddress_cox_10g:[tmsh::get_field_value $portitem port] ip-protocol tcp  $profiles   mask 255.255.255.255  $snat  $asm_policy $irules pool $tmsh::app_name-[tmsh::get_field_value $portitem port]  translate-address enabled    translate-port enabled vlans-disabled $ruleset    security-log-profiles replace-all-with \{ m1-base-logging \}\}"
             }
         }
 
         if { $configuration__vipaddress_internal != "" } {
+            set asm_policy [asm_policy_for_virtual "$tmsh::app_name-internal-[tmsh::get_field_value $portitem port]" $configuration__asmpolicy]
             if { ($configuration__redirect == "Yes") && ([tmsh::get_field_value $portitem port] == "443") } {
-            tmsh_create "/ ltm virtual" "$tmsh::app_name-internal-[tmsh::get_field_value $portitem port] \{destination $configuration__vipaddress_internal:[tmsh::get_field_value $portitem port] ip-protocol tcp  $profiles   mask 255.255.255.255  $snat $irules  pool $tmsh::app_name-[tmsh::get_field_value $portitem port]  translate-address enabled    translate-port enabled vlans-disabled $ruleset     security-log-profiles replace-all-with \{ m1-base-logging \}\}"
+            tmsh_create "/ ltm virtual" "$tmsh::app_name-internal-[tmsh::get_field_value $portitem port] \{destination $configuration__vipaddress_internal:[tmsh::get_field_value $portitem port] ip-protocol tcp  $profiles   mask 255.255.255.255  $snat $asm_policy $irules  pool $tmsh::app_name-[tmsh::get_field_value $portitem port]  translate-address enabled    translate-port enabled vlans-disabled $ruleset     security-log-profiles replace-all-with \{ m1-base-logging \}\}"
             tmsh_create "/ ltm virtual" "$tmsh::app_name-internal-80-redir \{destination $configuration__vipaddress_internal:80 ip-protocol tcp profiles replace-all-with \{ http \{ \} tcp \{ \} \}   mask 255.255.255.255   rules \{ _sys_https_redirect \} vlans-disabled $ruleset     security-log-profiles replace-all-with \{ m1-base-logging \}\}"
             } else {
-            tmsh_create "/ ltm virtual" "$tmsh::app_name-internal-[tmsh::get_field_value $portitem port] \{destination $configuration__vipaddress_internal:[tmsh::get_field_value $portitem port] ip-protocol tcp  $profiles   mask 255.255.255.255  $snat $irules  pool $tmsh::app_name-[tmsh::get_field_value $portitem port]  translate-address enabled    translate-port enabled vlans-disabled $ruleset     security-log-profiles replace-all-with \{ m1-base-logging \}\}"
+            tmsh_create "/ ltm virtual" "$tmsh::app_name-internal-[tmsh::get_field_value $portitem port] \{destination $configuration__vipaddress_internal:[tmsh::get_field_value $portitem port] ip-protocol tcp  $profiles   mask 255.255.255.255  $snat $asm_policy $irules  pool $tmsh::app_name-[tmsh::get_field_value $portitem port]  translate-address enabled    translate-port enabled vlans-disabled $ruleset     security-log-profiles replace-all-with \{ m1-base-logging \}\}"
             }
         }
 
@@ -89,11 +117,12 @@ foreach portitem $::configuration__ports  {
 
         if { $configuration__vipaddress_internal != "" } {
             scan $configuration__vipaddress_internal %d.%d.%d.%d a b c d
+            set asm_policy [asm_policy_for_virtual "$tmsh::app_name-[tmsh::get_field_value $portitem port]" $configuration__asmpolicy]
             if { ($configuration__redirect == "Yes") && ([tmsh::get_field_value $portitem port] == "443") } {
-            tmsh_create "/ ltm virtual" "$tmsh::app_name-[tmsh::get_field_value $portitem port] \{destination 172.21.64.$d:[tmsh::get_field_value $portitem port] ip-protocol tcp  $profiles   mask 255.255.255.255 $irules   pool $tmsh::app_name-[tmsh::get_field_value $portitem port] snat automap translate-address enabled    translate-port enabled vlans-disabled $ruleset     security-log-profiles replace-all-with \{ m1-base-logging \}\}"
+            tmsh_create "/ ltm virtual" "$tmsh::app_name-[tmsh::get_field_value $portitem port] \{destination 172.21.64.$d:[tmsh::get_field_value $portitem port] ip-protocol tcp  $profiles   mask 255.255.255.255 $asm_policy $irules   pool $tmsh::app_name-[tmsh::get_field_value $portitem port] snat automap translate-address enabled    translate-port enabled vlans-disabled $ruleset     security-log-profiles replace-all-with \{ m1-base-logging \}\}"
             tmsh_create "/ ltm virtual" "$tmsh::app_name-80-redir \{destination 172.21.64.$d:80 ip-protocol tcp profiles replace-all-with \{ http \{ \} tcp \{ \} \}   mask 255.255.255.255   rules \{ _sys_https_redirect \} vlans-disabled $ruleset     security-log-profiles replace-all-with \{ m1-base-logging \}\}"
             } else {
-            tmsh_create "/ ltm virtual" "$tmsh::app_name-[tmsh::get_field_value $portitem port] \{destination 172.21.64.$d:[tmsh::get_field_value $portitem port] ip-protocol tcp  $profiles   mask 255.255.255.255 $irules   pool $tmsh::app_name-[tmsh::get_field_value $portitem port] snat automap translate-address enabled    translate-port enabled vlans-disabled $ruleset     security-log-profiles replace-all-with \{ m1-base-logging \}\}"
+            tmsh_create "/ ltm virtual" "$tmsh::app_name-[tmsh::get_field_value $portitem port] \{destination 172.21.64.$d:[tmsh::get_field_value $portitem port] ip-protocol tcp  $profiles   mask 255.255.255.255 $asm_policy $irules   pool $tmsh::app_name-[tmsh::get_field_value $portitem port] snat automap translate-address enabled    translate-port enabled vlans-disabled $ruleset     security-log-profiles replace-all-with \{ m1-base-logging \}\}"
             }
         }
 
@@ -142,9 +171,19 @@ foreach portitem $::configuration__ports  {
         foreach choice $choices {
             append results2 $choice
             append results2 "\n"
-        } 
+        }
         return $results2
-    }  
+    }
+    choice asmpolicy display "xxlarge" default " " tcl {
+        set choices [tmsh::run_proc f5.app_utils:get_items /asm policy]
+        set results2 {}
+        append results2 " \n"
+        foreach choice $choices {
+            append results2 $choice
+            append results2 "\n"
+        }
+        return $results2
+    }
 
  	table backendservers {
  		string backendip display "medium" default "10.14.128." required validator "IpAddress"
@@ -169,6 +208,7 @@ foreach portitem $::configuration__ports  {
      configuration.snat "Source NAT User when connecting to VIP"
 	 configuration.redirect "Create HTTP redirect for HTTPS VIP"
      configuration.irules "iRule(s) applied to VIP"
+     configuration.asmpolicy "ASM policy applied to VIP"
 }
             }
             role-acl none
