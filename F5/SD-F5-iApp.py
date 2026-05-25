@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Mitchell 1 VIP Deployment Script
+F5 VIP Deployment Script
 Mirrors the SD-F5-iApp.tmpl iApp template using the F5 iControl REST API.
 
 Usage examples:
@@ -288,7 +288,7 @@ def parse_ports(port_strings):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Mitchell 1 VIP Deployment — equivalent to SD-F5-iApp.tmpl"
+        description="F5 VIP Deployment — equivalent to SD-F5-iApp.tmpl"
     )
     parser.add_argument("--host", required=True, help="F5 BIG-IP hostname or IP")
     parser.add_argument("--username", default="admin", help="BIG-IP username (default: admin)")

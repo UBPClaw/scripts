@@ -1,4 +1,4 @@
-# SD-F5-iApp.py — Mitchell 1 VIP Deployment Script
+# SD-F5-iApp.py — F5 VIP Deployment Script
 
 Python replacement for the `SD-F5-iApp.tmpl` F5 iApp template. Deploys LTM pools, virtual servers, firewall policies, and ASM L7 policies to a BIG-IP via the iControl REST API.
 
