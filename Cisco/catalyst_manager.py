@@ -111,9 +111,6 @@ class RestconfClient:
 
     def post_rpc(self, path: str, data: dict) -> dict:
         """Call a RESTCONF RPC (e.g., save-config)."""
-        url = f"https://{self.session.auth[0]}@{self.base.split('//')[1].split('/')[0]}" \
-              f"/restconf/operations/{path.lstrip('/')}"
-        # Rebuild cleanly
         base_host = self.base.split("/restconf")[0].replace("https://", "")
         url = f"https://{base_host}/restconf/operations/{path.lstrip('/')}"
         try:
@@ -134,18 +131,26 @@ class RestconfClient:
 class SshClient:
     """SSH client using Paramiko for IOS/IOS-XE switches."""
 
-    def __init__(self, host: str, user: str, password: str, port: int = 22):
+    def __init__(self, host: str, user: str, password: str, port: int = 22,
+                 verify_host: bool = True):
         if not HAS_PARAMIKO:
             raise RuntimeError("paramiko is required for SSH mode: pip install paramiko")
         self.host = host
         self.port = port
         self.user = user
         self.password = password
+        self.verify_host = verify_host
         self._client: paramiko.SSHClient | None = None
 
     def connect(self):
         c = paramiko.SSHClient()
-        c.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        if self.verify_host:
+            known_hosts = os.path.expanduser("~/.ssh/known_hosts")
+            if os.path.exists(known_hosts):
+                c.load_host_keys(known_hosts)
+            c.set_missing_host_key_policy(paramiko.RejectPolicy())
+        else:
+            c.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         c.connect(self.host, port=self.port, username=self.user,
                   password=self.password, look_for_keys=False, allow_agent=False)
         self._client = c
@@ -293,7 +298,7 @@ def cmd_neighbors(client: RestconfClient) -> None:
              e.get("device-name",      "N/A"),
              e.get("port-id",          "N/A"),
              e.get("platform-name",    "N/A"),
-             e.get("version",          "N/A")[:40]]
+             str(e.get("version", "N/A"))[:40]]
             for e in entries]
 
     if rows:
@@ -395,10 +400,16 @@ def cmd_save(client: RestconfClient) -> None:
     try:
         client.post_rpc("cisco-ia:save-config", {})
         print("  Configuration saved.")
-    except RestconfError:
+    except RestconfError as first_exc:
         # IOS-XE older firmware may use a different RPC namespace
-        client.post_rpc("Cisco-IOS-XE-rpc:save-config", {})
-        print("  Configuration saved.")
+        try:
+            client.post_rpc("Cisco-IOS-XE-rpc:save-config", {})
+            print("  Configuration saved.")
+        except RestconfError as exc:
+            raise RestconfError(
+                f"Save failed with both RPC namespaces. "
+                f"First: {first_exc}. Second: {exc}"
+            ) from exc
 
 
 # ---------------------------------------------------------------------------
@@ -441,6 +452,8 @@ def parse_args() -> argparse.Namespace:
                    help="Port override (default: 443 RESTCONF, 22 SSH)")
     p.add_argument("--no-verify", action="store_true",
                    help="Disable TLS certificate verification")
+    p.add_argument("--no-verify-host", action="store_true",
+                   help="Disable SSH host key verification (insecure, use only in labs)")
     p.add_argument("--ssh",      action="store_true",
                    help="Force SSH mode instead of RESTCONF")
 
@@ -476,12 +489,18 @@ def main() -> None:
     if not password:
         password = getpass.getpass(f"Password for {args.user}@{args.host}: ")
 
+    if args.no_verify:
+        print("WARNING: TLS certificate verification is disabled.", file=sys.stderr)
+
     # SSH mode
     if args.ssh:
         if not HAS_PARAMIKO:
             print("ERROR: SSH mode requires paramiko — pip install paramiko", file=sys.stderr)
             sys.exit(1)
-        ssh = SshClient(args.host, args.user, password, port=args.port or 22)
+        if args.no_verify_host:
+            print("WARNING: SSH host key verification is disabled.", file=sys.stderr)
+        ssh = SshClient(args.host, args.user, password, port=args.port or 22,
+                        verify_host=not args.no_verify_host)
         try:
             ssh.connect()
         except Exception as exc:

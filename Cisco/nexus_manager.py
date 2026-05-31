@@ -139,18 +139,26 @@ class NxApiClient:
 class SshClient:
     """Minimal SSH client using Paramiko for switches without NX-API."""
 
-    def __init__(self, host: str, user: str, password: str, port: int = 22):
+    def __init__(self, host: str, user: str, password: str, port: int = 22,
+                 verify_host: bool = True):
         if not HAS_PARAMIKO:
             raise RuntimeError("paramiko is required for SSH mode: pip install paramiko")
         self.host = host
         self.port = port
         self.user = user
         self.password = password
+        self.verify_host = verify_host
         self._client: paramiko.SSHClient | None = None
 
     def connect(self):
         c = paramiko.SSHClient()
-        c.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        if self.verify_host:
+            known_hosts = os.path.expanduser("~/.ssh/known_hosts")
+            if os.path.exists(known_hosts):
+                c.load_host_keys(known_hosts)
+            c.set_missing_host_key_policy(paramiko.RejectPolicy())
+        else:
+            c.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         c.connect(self.host, port=self.port, username=self.user,
                   password=self.password, look_for_keys=False, allow_agent=False)
         self._client = c
@@ -184,6 +192,8 @@ def header(title: str) -> None:
 
 
 def table(rows: list[list[str]], columns: list[str]) -> None:
+    if not rows:
+        return
     widths = [max(len(str(r[i])) for r in ([columns] + rows)) for i in range(len(columns))]
     fmt = "  ".join(f"{{:<{w}}}" for w in widths)
     print(fmt.format(*columns))
@@ -370,10 +380,13 @@ def cmd_run(client: NxApiClient, command: str) -> None:
                 "output_format": "json",
             }
         }
-        r = client.session.post(client.base_url, json=payload, timeout=15)
-        r.raise_for_status()
-        out = r.json()["ins_api"]["outputs"]["output"]
-        print(out.get("body", "No output.") if isinstance(out, dict) else out)
+        try:
+            r = client.session.post(client.base_url, json=payload, timeout=15)
+            r.raise_for_status()
+            out = r.json()["ins_api"]["outputs"]["output"]
+            print(out.get("body", "No output.") if isinstance(out, dict) else out)
+        except Exception as exc:
+            raise NxApiError(f"Command failed (JSON and ASCII attempts): {exc}") from exc
 
 
 def cmd_save(client: NxApiClient) -> None:
@@ -404,9 +417,13 @@ def parse_args() -> argparse.Namespace:
                    help="Password (default: $NEXUS_PASS; prompted if omitted)")
     p.add_argument("--port",     type=int, default=None,
                    help="Port override (default: 443 NX-API, 22 SSH)")
-    p.add_argument("--no-ssl",   action="store_true",
+    p.add_argument("--no-ssl",        action="store_true",
                    help="Use HTTP instead of HTTPS for NX-API")
-    p.add_argument("--ssh",      action="store_true",
+    p.add_argument("--no-verify",     action="store_true",
+                   help="Disable TLS certificate verification")
+    p.add_argument("--no-verify-host", action="store_true",
+                   help="Disable SSH host key verification (insecure, use only in labs)")
+    p.add_argument("--ssh",           action="store_true",
                    help="Force SSH mode instead of NX-API")
 
     sub = p.add_subparsers(dest="command", metavar="COMMAND")
@@ -441,11 +458,17 @@ def main() -> None:
     if not password:
         password = getpass.getpass(f"Password for {args.user}@{args.host}: ")
 
+    if args.no_verify:
+        print("WARNING: TLS certificate verification is disabled.", file=sys.stderr)
+
     if args.ssh:
         if not HAS_PARAMIKO:
             print("ERROR: SSH mode requires paramiko — pip install paramiko", file=sys.stderr)
             sys.exit(1)
-        ssh = SshClient(args.host, args.user, password, port=args.port or 22)
+        if args.no_verify_host:
+            print("WARNING: SSH host key verification is disabled.", file=sys.stderr)
+        ssh = SshClient(args.host, args.user, password, port=args.port or 22,
+                        verify_host=not args.no_verify_host)
         try:
             ssh.connect()
         except Exception as exc:
@@ -479,7 +502,9 @@ def main() -> None:
 
     use_ssl = not args.no_ssl
     port = args.port or (443 if use_ssl else 80)
-    client = NxApiClient(args.host, args.user, password, port=port, use_ssl=use_ssl)
+    verify = not args.no_verify
+    client = NxApiClient(args.host, args.user, password, port=port, use_ssl=use_ssl,
+                         verify=verify)
 
     try:
         dispatch = {
