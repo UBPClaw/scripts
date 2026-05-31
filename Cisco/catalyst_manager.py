@@ -23,8 +23,14 @@ import getpass
 import json
 import os
 import sys
-import urllib3
 from typing import Any
+
+try:
+    import urllib3
+    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+    HAS_URLLIB3 = True
+except ImportError:
+    HAS_URLLIB3 = False
 
 try:
     import requests
@@ -37,8 +43,6 @@ try:
     HAS_PARAMIKO = True
 except ImportError:
     HAS_PARAMIKO = False
-
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 RESTCONF_HEADERS = {
     "Accept": "application/yang-data+json",
