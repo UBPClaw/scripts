@@ -222,8 +222,9 @@ python3 SD-F5-iApp.py \
 Extracts every **A** and **CNAME** resource record from an F5 BIG-IP DNS (GTM) system's **ZoneRunner** zones and writes them as CSV. ZoneRunner manages the raw DNS zones served by the BIG-IP's `named`/BIND instance, so this captures records that are **not** Wide IPs (which the `/mgmt/tm/gtm/wideip/*` APIs would miss).
 
 > **Note:** ZoneRunner is **not** exposed through the iControl REST (`/mgmt/tm`) namespace — requesting `/mgmt/tm/zonerunner/*` returns `404 Public URI path not registered`. This script therefore uses the iControl **SOAP** interfaces via F5's official `bigsuds` library:
-> - `Management.Zone.get_list()` → all (view, zone) pairs
-> - `Management.ResourceRecord.get_rrs()` → records per zone (zone-file format), parsed and filtered to A/CNAME.
+> - `Management.View.get_list()` → all DNS view names
+> - `Management.Zone.get_zone_name(view_names=[...])` → the zones in each view
+> - `Management.ResourceRecord.get_rrs(view_zones=[...])` → records per zone (zone-file format), parsed and filtered to A/CNAME.
 
 By default the script auto-discovers all DNS views and all zones. Use `--view` / `--zone` to narrow the scope.
 
@@ -251,7 +252,7 @@ python3 f5_gtm_zonerunner_export.py --host <BIG-IP> [--user admin] [--password <
 | `--output` | No | stdout | CSV output file path |
 | `--timeout` | No | `15` | Socket timeout in seconds |
 | `--verify` | No | off | Verify the BIG-IP TLS certificate |
-| `--debug` | No | off | Print raw SOAP traffic to stderr |
+| `--debug` | No | off | Print the raw `get_zone_name` result shape to stderr (diagnostics) |
 
 CSV columns: `view, zone, name, type, ttl, value` (value is the IP for A records, the canonical name for CNAME records).
 
@@ -281,12 +282,25 @@ python3 f5_gtm_zonerunner_export.py --host 10.0.0.1 --user admin \
 
 - Connects over HTTPS and **disables certificate verification by default** (pass `--verify` to enforce it) — intended for internal/lab BIG-IP devices. (TLS verification requires a `bigsuds` version new enough to accept the `verify` argument; older versions never verify.)
 - Read-only: the script never modifies records.
-- Records are returned by `get_rrs()` in zone-file format and parsed locally. Owner names omitted on continuation lines inherit the previous record's name; comment (`;`) and directive (`$`) lines are skipped. If a record's value or name looks off, run with `--debug` to inspect the raw SOAP records.
+- Records are returned by `get_rrs()` in zone-file format and parsed locally. Owner names omitted on continuation lines inherit the previous record's name; comment (`;`) and directive (`$`) lines are skipped.
+- The script does **not** enable bigsuds' own debug flag — on some bigsuds/Python 3 combinations it triggers a `TypeError: cannot use a string pattern on a bytes-like object` during WSDL discovery. The `--debug` flag here only prints the script's own diagnostics.
+- The `--zone` filter is trailing-dot insensitive (`example.com` and `example.com.` both match).
 - Credentials: prefer `F5_USER` / `F5_PASS` environment variables over passing `--password` on the command line.
+
+## Diagnostics — `zonerunner_introspect.py`
+
+A companion helper that lists the iControl SOAP methods (and their signatures) actually exposed by the ZoneRunner/DNS interfaces on a given BIG-IP. Useful if a different TMOS version names methods differently than the export expects.
+
+```bash
+python3 zonerunner_introspect.py --host <BIG-IP> --user admin \
+    --interface Management.View --interface Management.Zone --interface Management.ResourceRecord
+```
 
 ## Troubleshooting
 
 - **`404 Public URI path not registered: /tm/zonerunner/...`** — you are hitting the iControl REST API; ZoneRunner is SOAP-only. This script already uses SOAP, so this error means an older REST-based copy is being run.
 - **`the 'bigsuds' library is required`** — run `pip install bigsuds`.
-- **Empty output / `no matching zones found`** — confirm the account has iControl SOAP access and a role that can read DNS zones, and that your `--view` / `--zone` filters match exactly (zone names include the trailing dot, e.g. `example.com.`).
-- **Connection or auth errors** — re-run with `--debug` to see the raw SOAP request/response.
+- **`Method not found: '...get_list'` / `'...get_zone_name'`** — the BIG-IP's SOAP interface names differ from what the script calls. Run `zonerunner_introspect.py` to list the real method names for that device.
+- **`Type not found: 'view_name'` on `get_rrs`** — bigsuds couldn't marshal the `ViewZone` struct; the script handles this by resolving the WSDL schema through the type factory first. If it resurfaces, confirm `bigsuds`/`suds-jurko` are installed correctly.
+- **Empty output / `no matching zones found`** — confirm the account has iControl SOAP access and a role that can read DNS zones, and that your `--view` / `--zone` filters match.
+- **`TypeError: cannot use a string pattern on a bytes-like object`** — a bigsuds WSDL-discovery bug; the script avoids it by not enabling bigsuds debug. If you see it, ensure you are running the current version of the script.
