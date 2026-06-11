@@ -219,14 +219,19 @@ python3 SD-F5-iApp.py \
 
 # f5_gtm_zonerunner_export.py — GTM ZoneRunner A/CNAME Export
 
-Extracts every **A** and **CNAME** resource record from an F5 BIG-IP DNS (GTM) system via the iControl REST **ZoneRunner** workspace and writes them as CSV. ZoneRunner manages the raw DNS zones served by the BIG-IP's `named`/BIND instance, so this captures records that are **not** Wide IPs (which the `/mgmt/tm/gtm/wideip/*` APIs would miss).
+Extracts every **A** and **CNAME** resource record from an F5 BIG-IP DNS (GTM) **ZoneRunner** zones and writes them as CSV. ZoneRunner manages the raw DNS zones served by the BIG-IP's `named`/BIND instance, so this captures records that are **not** Wide IPs (which the `/mgmt/tm/gtm/wideip/*` APIs would miss).
+
+> **Note:** ZoneRunner is **not** exposed through the iControl REST (`/mgmt/tm`) namespace — requesting `/mgmt/tm/zonerunner/*` returns `404 Public URI path not registered`. This script therefore uses the iControl **SOAP** interfaces via F5's official `bigsuds` library:
+> - `Management.Zone.get_list()` → all (view, zone) pairs
+> - `Management.ResourceRecord.get_rrs()` → records per zone (zone-file format), parsed and filtered to A/CNAME.
 
 By default the script auto-discovers all DNS views and all zones. Use `--view` / `--zone` to narrow the scope.
 
 ## Requirements
 
 - Python 3.7+
-- `requests` (`pip install requests`)
+- `bigsuds` (`pip install bigsuds`)
+- iControl SOAP enabled on the BIG-IP (default on most builds)
 
 ## Usage
 
@@ -244,9 +249,9 @@ python3 f5_gtm_zonerunner_export.py --host <BIG-IP> [--user admin] [--password <
 | `--view` | No | all views | Limit to a single DNS view |
 | `--zone` | No | all zones | Limit to a single zone (FQDN with trailing dot, e.g. `example.com.`) |
 | `--output` | No | stdout | CSV output file path |
-| `--timeout` | No | `15` | Per-request timeout in seconds |
+| `--timeout` | No | `15` | Socket timeout in seconds |
 | `--verify` | No | off | Verify the BIG-IP TLS certificate |
-| `--debug` | No | off | Dump raw JSON responses to stderr |
+| `--debug` | No | off | Print raw SOAP traffic to stderr |
 
 CSV columns: `view, zone, name, type, ttl, value` (value is the IP for A records, the canonical name for CNAME records).
 
@@ -263,7 +268,7 @@ python3 f5_gtm_zonerunner_export.py --host 10.0.0.1 --user admin \
 
 ## Notes
 
-- Connects over HTTPS and **disables certificate verification by default** (pass `--verify` to enforce it) — intended for internal/lab BIG-IP devices.
+- Connects over HTTPS and **disables certificate verification by default** (pass `--verify` to enforce it) — intended for internal/lab BIG-IP devices. (TLS verification requires a `bigsuds` version new enough to accept the `verify` argument; older versions never verify.)
 - Read-only: the script never modifies records.
-- The ZoneRunner `resource-record` endpoint is scoped per zone/view via a tmsh-style `options` query parameter whose exact shape varies by TMOS version. The script tries the scoped form first and falls back to an unscoped fetch filtered client-side. If a zone returns no records unexpectedly, run with `--debug` to inspect the raw JSON and adjust.
+- Records are returned by `get_rrs()` in zone-file format and parsed locally. Owner names omitted on continuation lines inherit the previous record's name; comment (`;`) and directive (`$`) lines are skipped. If a record's value or name looks off, run with `--debug` to inspect the raw SOAP records.
 - Credentials: prefer `F5_USER` / `F5_PASS` environment variables over passing `--password` on the command line.
