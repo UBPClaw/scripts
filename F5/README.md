@@ -214,3 +214,56 @@ python3 SD-F5-iApp.py \
 - Objects are created in the `/Common` partition.
 - The script does not check for existing objects before creating them. Re-running against an existing app name will result in errors from the BIG-IP. Remove existing objects first if redeploying.
 - Credentials are passed as a CLI argument. To avoid exposing the password in shell history, consider setting it via an environment variable and passing it with `--password "$F5_PASS"`.
+
+---
+
+# f5_gtm_zonerunner_export.py — GTM ZoneRunner A/CNAME Export
+
+Extracts every **A** and **CNAME** resource record from an F5 BIG-IP DNS (GTM) system via the iControl REST **ZoneRunner** workspace and writes them as CSV. ZoneRunner manages the raw DNS zones served by the BIG-IP's `named`/BIND instance, so this captures records that are **not** Wide IPs (which the `/mgmt/tm/gtm/wideip/*` APIs would miss).
+
+By default the script auto-discovers all DNS views and all zones. Use `--view` / `--zone` to narrow the scope.
+
+## Requirements
+
+- Python 3.7+
+- `requests` (`pip install requests`)
+
+## Usage
+
+```
+python3 f5_gtm_zonerunner_export.py --host <BIG-IP> [--user admin] [--password <pwd>] \
+    [--view <name>] [--zone <fqdn.>] [--output records.csv] \
+    [--timeout 15] [--verify] [--debug]
+```
+
+| Argument | Required | Default | Description |
+|---|---|---|---|
+| `--host` | Yes | — | BIG-IP DNS (GTM) hostname or IP address |
+| `--user` | No | `$F5_USER` or `admin` | Username |
+| `--password` | No | `$F5_PASS`, else prompted | Password |
+| `--view` | No | all views | Limit to a single DNS view |
+| `--zone` | No | all zones | Limit to a single zone (FQDN with trailing dot, e.g. `example.com.`) |
+| `--output` | No | stdout | CSV output file path |
+| `--timeout` | No | `15` | Per-request timeout in seconds |
+| `--verify` | No | off | Verify the BIG-IP TLS certificate |
+| `--debug` | No | off | Dump raw JSON responses to stderr |
+
+CSV columns: `view, zone, name, type, ttl, value` (value is the IP for A records, the canonical name for CNAME records).
+
+## Examples
+
+```bash
+# Export everything to a file (prompts for the password):
+python3 f5_gtm_zonerunner_export.py --host bigip.example.com --user admin --output records.csv
+
+# One view + one zone, to stdout:
+python3 f5_gtm_zonerunner_export.py --host 10.0.0.1 --user admin \
+    --view external --zone example.com.
+```
+
+## Notes
+
+- Connects over HTTPS and **disables certificate verification by default** (pass `--verify` to enforce it) — intended for internal/lab BIG-IP devices.
+- Read-only: the script never modifies records.
+- The ZoneRunner `resource-record` endpoint is scoped per zone/view via a tmsh-style `options` query parameter whose exact shape varies by TMOS version. The script tries the scoped form first and falls back to an unscoped fetch filtered client-side. If a zone returns no records unexpectedly, run with `--debug` to inspect the raw JSON and adjust.
+- Credentials: prefer `F5_USER` / `F5_PASS` environment variables over passing `--password` on the command line.
