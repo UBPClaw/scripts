@@ -219,7 +219,7 @@ python3 SD-F5-iApp.py \
 
 # f5_gtm_zonerunner_export.py — GTM ZoneRunner A/CNAME Export
 
-Extracts every **A** and **CNAME** resource record from an F5 BIG-IP DNS (GTM) **ZoneRunner** zones and writes them as CSV. ZoneRunner manages the raw DNS zones served by the BIG-IP's `named`/BIND instance, so this captures records that are **not** Wide IPs (which the `/mgmt/tm/gtm/wideip/*` APIs would miss).
+Extracts every **A** and **CNAME** resource record from an F5 BIG-IP DNS (GTM) system's **ZoneRunner** zones and writes them as CSV. ZoneRunner manages the raw DNS zones served by the BIG-IP's `named`/BIND instance, so this captures records that are **not** Wide IPs (which the `/mgmt/tm/gtm/wideip/*` APIs would miss).
 
 > **Note:** ZoneRunner is **not** exposed through the iControl REST (`/mgmt/tm`) namespace — requesting `/mgmt/tm/zonerunner/*` returns `404 Public URI path not registered`. This script therefore uses the iControl **SOAP** interfaces via F5's official `bigsuds` library:
 > - `Management.Zone.get_list()` → all (view, zone) pairs
@@ -255,6 +255,17 @@ python3 f5_gtm_zonerunner_export.py --host <BIG-IP> [--user admin] [--password <
 
 CSV columns: `view, zone, name, type, ttl, value` (value is the IP for A records, the canonical name for CNAME records).
 
+### Sample output
+
+```csv
+view,zone,name,type,ttl,value
+external,example.com.,www.example.com.,A,300,10.1.1.10
+external,example.com.,app.example.com.,CNAME,,www.example.com.
+internal,corp.example.com.,mail.corp.example.com.,A,3600,10.20.1.20
+```
+
+On completion the script prints a count to stderr, e.g. `Exported 142 A/CNAME record(s) to records.csv.`
+
 ## Examples
 
 ```bash
@@ -272,3 +283,10 @@ python3 f5_gtm_zonerunner_export.py --host 10.0.0.1 --user admin \
 - Read-only: the script never modifies records.
 - Records are returned by `get_rrs()` in zone-file format and parsed locally. Owner names omitted on continuation lines inherit the previous record's name; comment (`;`) and directive (`$`) lines are skipped. If a record's value or name looks off, run with `--debug` to inspect the raw SOAP records.
 - Credentials: prefer `F5_USER` / `F5_PASS` environment variables over passing `--password` on the command line.
+
+## Troubleshooting
+
+- **`404 Public URI path not registered: /tm/zonerunner/...`** — you are hitting the iControl REST API; ZoneRunner is SOAP-only. This script already uses SOAP, so this error means an older REST-based copy is being run.
+- **`the 'bigsuds' library is required`** — run `pip install bigsuds`.
+- **Empty output / `no matching zones found`** — confirm the account has iControl SOAP access and a role that can read DNS zones, and that your `--view` / `--zone` filters match exactly (zone names include the trailing dot, e.g. `example.com.`).
+- **Connection or auth errors** — re-run with `--debug` to see the raw SOAP request/response.
